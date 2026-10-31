@@ -1,28 +1,18 @@
-# utils.py
 import streamlit as st
 import gspread
+from google.oauth2.service_account import Credentials
 
-@st.cache_resource
 def get_gspread_client():
-    """Caches the gspread connection client securely."""
-    return gspread.service_account(filename="excel-management-513006-e71d85907364.json")
-
-@st.cache_data(ttl=60)
-def load_all_data():
-    """Fetches records and schema with a 60-second cache to prevent network lag."""
-    gc = get_gspread_client()
-    sh = gc.open("Management app")
+    SCOPES = [
+        "https://www.googleapis.com/auth/spreadsheets",
+        "https://www.googleapis.com/auth/drive"
+    ]
     
-    data_sheet = sh.worksheet("Data")
-    schema_sheet = sh.worksheet("Schema")
-    
-    raw_data = data_sheet.get_all_records()
-    fields_config = schema_sheet.get_all_records()
-    
-    return raw_data, fields_config
-
-def get_sheets_raw():
-    """Returns raw worksheet objects for performing write/update operations."""
-    gc = get_gspread_client()
-    sh = gc.open("Management app")
-    return sh.worksheet("Data"), sh.worksheet("Schema")
+    # Check if running on Streamlit Cloud using st.secrets
+    if "gcp_service_account" in st.secrets:
+        creds_dict = dict(st.secrets["gcp_service_account"])
+        creds = Credentials.from_service_account_info(creds_dict, scopes=SCOPES)
+        return gspread.authorize(creds)
+    else:
+        # Fallback for local testing if JSON file exists
+        return gspread.service_account(filename="excel-management-513006-e71d85907364.json")
