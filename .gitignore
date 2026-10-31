@@ -1,0 +1,6 @@
+.streamlit/secrets.toml
+excel-management-513006-e71d85907364.json
+venv/
+__pycache__/
+.env
+*.pyc
