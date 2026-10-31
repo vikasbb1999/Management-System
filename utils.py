@@ -16,3 +16,29 @@ def get_gspread_client():
     else:
         # Fallback for local testing if JSON file exists
         return gspread.service_account(filename="excel-management-513006-e71d85907364.json")
+
+@st.cache_data(ttl=60)
+def load_all_data():
+    client = get_gspread_client()
+    # Opens your Google Sheet (make sure the spreadsheet name matches your file name)
+    spreadsheet = client.open("excel-management") 
+    
+    # Load main data ledger sheet
+    data_worksheet = spreadsheet.worksheet("Data")
+    raw_data = data_worksheet.get_all_records()
+    
+    # Load schema/fields configuration sheet if applicable
+    try:
+        config_worksheet = spreadsheet.worksheet("FieldsConfig")
+        fields_config = config_worksheet.get_all_records()
+    except Exception:
+        fields_config = []
+        
+    return raw_data, fields_config
+
+def get_sheets_raw():
+    client = get_gspread_client()
+    spreadsheet = client.open("excel-management")
+    data_worksheet = spreadsheet.worksheet("Data")
+    config_worksheet = spreadsheet.worksheet("FieldsConfig")
+    return data_worksheet, config_worksheet
