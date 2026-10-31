@@ -20,14 +20,12 @@ def get_gspread_client():
 @st.cache_data(ttl=60)
 def load_all_data():
     client = get_gspread_client()
-    # Opens your Google Sheet (make sure the spreadsheet name matches your file name)
-    spreadsheet = client.open("excel-management") 
+    # Updated to match your exact Google Sheet name
+    spreadsheet = client.open("Management app") 
     
-    # Load main data ledger sheet
     data_worksheet = spreadsheet.worksheet("Data")
     raw_data = data_worksheet.get_all_records()
     
-    # Load schema/fields configuration sheet if applicable
     try:
         config_worksheet = spreadsheet.worksheet("FieldsConfig")
         fields_config = config_worksheet.get_all_records()
@@ -38,7 +36,7 @@ def load_all_data():
 
 def get_sheets_raw():
     client = get_gspread_client()
-    spreadsheet = client.open("excel-management")
+    spreadsheet = client.open("Management app") # Updated here too
     data_worksheet = spreadsheet.worksheet("Data")
     config_worksheet = spreadsheet.worksheet("FieldsConfig")
     return data_worksheet, config_worksheet
