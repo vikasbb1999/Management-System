@@ -27,7 +27,7 @@ def load_all_data():
     raw_data = data_worksheet.get_all_records()
     
     try:
-        config_worksheet = spreadsheet.worksheet("FieldsConfig")
+        config_worksheet = spreadsheet.worksheet("Schema")
         fields_config = config_worksheet.get_all_records()
     except Exception:
         fields_config = []
