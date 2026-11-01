@@ -440,30 +440,57 @@ if raw_data:
     )
 
     # --- SAVE CHANGES BUTTON ---
-    if st.button("💾 Save Status Changes to Google Sheets", type="primary"):
-        with st.spinner("Updating Google Sheets with new status values..."):
-            data_sheet, _ = get_sheets_raw()
-            headers = df.columns.tolist()
+    # if st.button("💾 Save Status Changes to Google Sheets", type="primary"):
+    #     with st.spinner("Updating Google Sheets with new status values..."):
+    #         data_sheet, _ = get_sheets_raw()
+    #         headers = df.columns.tolist()
             
-            update_count = 0
-            for idx, row in edited_df.iterrows():
-                orig_row = df.loc[idx]
-                if not row.equals(orig_row):
-                    sheet_row_num = idx + 2
+    #         update_count = 0
+    #         for idx, row in edited_df.iterrows():
+    #             orig_row = df.loc[idx]
+    #             if not row.equals(orig_row):
+    #                 sheet_row_num = idx + 2
                     
-                    row_values = []
-                    for col in headers:
-                        val = row[col]
-                        if pd.isna(val):
-                            row_values.append("")
-                        elif isinstance(val, (pd.Timestamp, datetime.date, datetime.datetime)):
-                            row_values.append(pd.to_datetime(val).strftime("%Y-%m-%d"))
-                        else:
-                            row_values.append(str(val))
+    #                 row_values = []
+    #                 for col in headers:
+    #                     val = row[col]
+    #                     if pd.isna(val):
+    #                         row_values.append("")
+    #                     elif isinstance(val, (pd.Timestamp, datetime.date, datetime.datetime)):
+    #                         row_values.append(pd.to_datetime(val).strftime("%Y-%m-%d"))
+    #                     else:
+    #                         row_values.append(str(val))
                             
-                    data_sheet.update(range_name=f"A{sheet_row_num}", values=[row_values])
-                    update_count += 1
+    #                 data_sheet.update(range_name=f"A{sheet_row_num}", values=[row_values])
+    #                 update_count += 1
             
+# --- SAVE CHANGES BUTTON ---
+        if st.button("💾 Save Status Changes to Google Sheets", type="primary"):
+            with st.spinner("Updating Google Sheets with new status values..."):
+                data_sheet, _ = get_sheets_raw()
+                headers = df.columns.tolist()
+                
+                update_count = 0
+                # Iterate through the edited filtered view
+                for idx, row in edited_df.iterrows():
+                    orig_row = df.loc[idx]
+                    # Check if this specific row was modified
+                    if not row.equals(orig_row):
+                        # sheet_row_num must map directly to the original dataframe's index + 2 (1 for header, 1 for 0-indexing)
+                        sheet_row_num = idx + 2
+                        
+                        row_values = []
+                        for col in headers:
+                            val = row[col]
+                            if pd.isna(val):
+                                row_values.append("")
+                            elif isinstance(val, (pd.Timestamp, datetime.date, datetime.datetime)):
+                                row_values.append(pd.to_datetime(val).strftime("%Y-%m-%d"))
+                            else:
+                                row_values.append(str(val))
+                                
+                        data_sheet.update(range_name=f"A{sheet_row_num}", values=[row_values])
+                        update_count
             st.cache_data.clear()
             st.success(f"Successfully updated status changes for {update_count} record(s) in Google Sheets!")
             st.rerun()
