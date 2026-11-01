@@ -38,5 +38,5 @@ def get_sheets_raw():
     client = get_gspread_client()
     spreadsheet = client.open("Management app") # Updated here too
     data_worksheet = spreadsheet.worksheet("Data")
-    config_worksheet = spreadsheet.worksheet("FieldsConfig")
+    config_worksheet = spreadsheet.worksheet("Schema")
     return data_worksheet, config_worksheet
