@@ -182,8 +182,6 @@
 #     st.info("No data ledger records found inside Google Sheets yet.")
 
 
-
-
 import streamlit as st
 import pandas as pd
 import datetime
@@ -299,24 +297,41 @@ if raw_data:
 
     st.markdown("---")
 
-    # --- ALLOW EDITING ONLY FOR THE 4 SPECIFIED COLUMNS ---
+    # --- ENSURE EDITING FOR THE 4 SPECIFIED COLUMNS WITH FALLBACK OPTIONS ---
     allowed_editable_columns = ["Desk 1 Status", "Desk 2 Status", "Final Status", "Priority"]
+    
+    # Default fallback options if Schema sheet is missing options for these columns
+    fallback_options = {
+        "Desk 1 Status": ["done", "inprogress", "incomplete"],
+        "Desk 2 Status": ["done", "inprogress", "incomplete"],
+        "Final Status": ["done", "inprogress", "incomplete"],
+        "Priority": ["Low", "Medium", "High"]
+    }
 
     column_configs = {}
-    for field in fields_config:
-        col_name = field["column_name"]
-        opts_str = field["options"]
-        
-        if col_name in allowed_editable_columns and opts_str:
-            options_list = [o.strip() for o in opts_str.split(",")]
-            column_configs[col_name] = st.column_config.SelectboxColumn(
-                col_name,
+    
+    # Build a lookup dictionary from fields_config if available
+    config_dict = {}
+    if fields_config:
+        for field in fields_config:
+            config_dict[field.get("column_name", "")] = field.get("options", "")
+
+    for col in df.columns:
+        if col in allowed_editable_columns:
+            opts_str = config_dict.get(col, "")
+            if opts_str:
+                options_list = [o.strip() for o in str(opts_str).split(",")]
+            else:
+                options_list = fallback_options.get(col, ["done", "inprogress", "incomplete"])
+                
+            column_configs[col] = st.column_config.SelectboxColumn(
+                col,
                 options=options_list,
                 required=False
             )
         else:
-            column_configs[col_name] = st.column_config.Column(
-                col_name,
+            column_configs[col] = st.column_config.Column(
+                col,
                 disabled=True
             )
 
@@ -336,11 +351,9 @@ if raw_data:
             headers = df.columns.tolist()
             
             update_count = 0
-            # Iterate through the edited view and accurately map back to original master df indices
             for idx, row in edited_df.iterrows():
                 orig_row = df.loc[idx]
                 if not row.equals(orig_row):
-                    # Google Sheets row numbers start at 2 (Row 1 is headers)
                     sheet_row_num = int(idx) + 2 
                     
                     row_values = []
