@@ -73,11 +73,11 @@ st.markdown("""
 
 @st.cache_resource
 def get_sheets():
-    # Use the secure shared client instead of looking for a local json file
     gc = get_gspread_client()
     spreadsheet = gc.open("Management app")
     data_worksheet = spreadsheet.worksheet("Data")
-    cconfig_worksheet = spreadsheet.worksheet("Schema")
+    # Ensure this variable matches what you return below
+    config_worksheet = spreadsheet.worksheet("Schema") 
     return data_worksheet, config_worksheet
 
 data_sheet, schema_sheet = get_sheets()
