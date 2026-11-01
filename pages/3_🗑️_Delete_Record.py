@@ -76,7 +76,7 @@ def get_sheets():
     gc = get_gspread_client()
     spreadsheet = gc.open("Management app")
     data_worksheet = spreadsheet.worksheet("Data")
-    config_worksheet = spreadsheet.worksheet("FieldsConfig")
+    config_worksheet = spreadsheet.worksheet("Schema")
     return data_worksheet, config_worksheet
 
 data_sheet, schema_sheet = get_sheets()

@@ -2,6 +2,7 @@ import streamlit as st
 import datetime
 import gspread
 from sidebar import render_sidebar  # Import the sidebar component
+from utils import get_gspread_client
 
 st.set_page_config(page_title="View Ledger", layout="wide")
 
@@ -86,7 +87,7 @@ def get_sheets():
     gc = get_gspread_client()
     spreadsheet = gc.open("Management app")
     data_worksheet = spreadsheet.worksheet("Data")
-    config_worksheet = spreadsheet.worksheet("FieldsConfig")
+    config_worksheet = spreadsheet.worksheet("Schema")
     return data_worksheet, config_worksheet
 
 data_sheet, schema_sheet = get_sheets()
