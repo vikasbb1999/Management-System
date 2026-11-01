@@ -79,10 +79,15 @@ st.header("📝 Modify Existing Row Cells")
 
 
 @st.cache_resource
+
+
 def get_sheets():
-    gc = gspread.service_account(filename="excel-management-513006-e71d85907364.json")
-    sh = gc.open("Management app")
-    return sh.worksheet("Data"), sh.worksheet("Schema")
+    # Use the secure shared client instead of looking for a local json file
+    gc = get_gspread_client()
+    spreadsheet = gc.open("Management app")
+    data_worksheet = spreadsheet.worksheet("Data")
+    config_worksheet = spreadsheet.worksheet("FieldsConfig")
+    return data_worksheet, config_worksheet
 
 data_sheet, schema_sheet = get_sheets()
 raw_data = data_sheet.get_all_records()

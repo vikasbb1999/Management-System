@@ -1,6 +1,8 @@
 import streamlit as st
 import pandas as pd
 import gspread
+# Import the shared client from your utils.py
+from utils import get_gspread_client
 
 from sidebar import render_sidebar  # Import the sidebar component
 
@@ -71,9 +73,12 @@ st.markdown("""
 
 @st.cache_resource
 def get_sheets():
-    gc = gspread.service_account(filename="excel-management-513006-e71d85907364.json")
-    sh = gc.open("Management app")
-    return sh.worksheet("Data"), sh.worksheet("Schema")
+    # Use the secure shared client instead of looking for a local json file
+    gc = get_gspread_client()
+    spreadsheet = gc.open("Management app")
+    data_worksheet = spreadsheet.worksheet("Data")
+    config_worksheet = spreadsheet.worksheet("FieldsConfig")
+    return data_worksheet, config_worksheet
 
 data_sheet, schema_sheet = get_sheets()
 fields_config = schema_sheet.get_all_records()
