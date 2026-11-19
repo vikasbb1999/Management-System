@@ -247,7 +247,7 @@ st.markdown("""
 render_sidebar()
 
 st.header("📋 Live System Spreadsheet Ledger & Status Updater")
-st.markdown("You can update **only** the 4 status columns (`Desk 1 Status`, `Desk 2 Status`, `Final Status`, and `Priority`) using the dropdown cells below. All other data fields are read-only.")
+st.markdown("You can update **only** the 4 status columns.")
 
 # Fast load from cache
 raw_data, fields_config = load_all_data()

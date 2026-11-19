@@ -20,7 +20,6 @@ def get_gspread_client():
 @st.cache_data(ttl=60)
 def load_all_data():
     client = get_gspread_client()
-    # Updated to match your exact Google Sheet name
     spreadsheet = client.open("Management app") 
     
     data_worksheet = spreadsheet.worksheet("Data")
@@ -36,7 +35,21 @@ def load_all_data():
 
 def get_sheets_raw():
     client = get_gspread_client()
-    spreadsheet = client.open("Management app") # Updated here too
+    spreadsheet = client.open("Management app")
     data_worksheet = spreadsheet.worksheet("Data")
     config_worksheet = spreadsheet.worksheet("Schema")
     return data_worksheet, config_worksheet
+
+@st.cache_data(ttl=60)
+def load_schedule_data():
+    client = get_gspread_client()
+    spreadsheet = client.open("Management app")
+    schedule_worksheet = spreadsheet.worksheet("Schedule")
+    return schedule_worksheet.get_all_records()
+
+def get_data_and_schedule_sheets():
+    client = get_gspread_client()
+    spreadsheet = client.open("Management app")
+    data_worksheet = spreadsheet.worksheet("Data")
+    schedule_worksheet = spreadsheet.worksheet("Schedule")
+    return data_worksheet, schedule_worksheet

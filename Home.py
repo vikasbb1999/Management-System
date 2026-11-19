@@ -279,7 +279,7 @@ st.markdown("""
 render_sidebar()
 
 st.header("📊 Interactive Management Dashboard")
-st.markdown("Showing **all rows** from your database. **Click on any donut chart segment** to instantly view the filtered list of records right here on this page.")
+st.markdown("Showing **all rows** from your database. ")
 
 # Load live data from cache
 raw_data, fields_config = load_all_data()
