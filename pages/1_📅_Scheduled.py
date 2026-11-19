@@ -1,9 +1,8 @@
 import streamlit as st
 import pandas as pd
 import datetime
-from utils import load_schedule_data, get_data_and_schedule_sheets
+from utils import load_all_data, load_schedule_data, get_data_and_schedule_sheets
 from sidebar import render_sidebar
-
 
 st.markdown("""
     <style>
@@ -70,13 +69,24 @@ def format_cell_value(val):
     return str(val).strip()
 
 
+def get_schema_options_map(fields_config):
+    """Maps column_name -> list of allowed options from Schema (case-insensitive key)."""
+    options_map = {}
+    if fields_config:
+        for field in fields_config:
+            col_name = str(field.get("column_name", "")).strip()
+            opts_str = str(field.get("options", "")).strip()
+            if col_name and opts_str:
+                options_map[col_name.lower()] = [o.strip() for o in opts_str.split(",") if o.strip()]
+    return options_map
+
+
 def build_aligned_data_row(row_dict, data_headers):
     """
-    Matches columns strictly against the Data worksheet headers.
-    If any status column is missing or blank, sets it to 'incomplete'.
+    Aligns a scheduled row strictly to the Data worksheet headers.
+    Marks missing or blank status columns as 'incomplete'.
     """
     status_columns = {"desk 1 status", "desk 2 status", "final status"}
-    # Case-insensitive lookup of the scheduled row's values
     normalized_row = {str(k).strip().lower(): format_cell_value(v) for k, v in row_dict.items()}
 
     aligned_values = []
@@ -85,7 +95,6 @@ def build_aligned_data_row(row_dict, data_headers):
         col_lower = clean_col.lower()
         val = normalized_row.get(col_lower, "")
 
-        # Mark missing or empty status columns as 'incomplete'
         if (col_lower in status_columns or "status" in col_lower) and not val:
             val = "incomplete"
 
@@ -93,15 +102,32 @@ def build_aligned_data_row(row_dict, data_headers):
     return aligned_values
 
 
+def render_field_input(col, current_val, options_map, key_prefix):
+    """Renders a dropdown if defined in Schema, date picker for dates, or text input."""
+    col_key = str(col).strip().lower()
+    if col_key in options_map:
+        opts = list(options_map[col_key])
+        if current_val and current_val not in opts:
+            opts = [current_val] + opts
+        idx = opts.index(current_val) if current_val in opts else 0
+        return st.selectbox(col, options=opts, index=idx, key=f"{key_prefix}_{col}")
+
+    if "date" in col_key:
+        try:
+            default_date = pd.to_datetime(current_val).date() if current_val else datetime.date.today()
+        except Exception:
+            default_date = datetime.date.today()
+        return st.date_input(col, value=default_date, key=f"{key_prefix}_{col}")
+
+    return st.text_input(col, value=current_val, placeholder=f"Enter {col}...", key=f"{key_prefix}_{col}")
+
+
 @st.dialog("➕ Add Scheduled Task")
-def add_schedule_dialog(headers, schedule_sheet):
+def add_schedule_dialog(headers, options_map, schedule_sheet):
     with st.form("add_scheduled_task_form", clear_on_submit=True):
         inputs = {}
         for col in headers:
-            if "date" in col.lower():
-                inputs[col] = st.date_input(col, value=datetime.date.today())
-            else:
-                inputs[col] = st.text_input(col, placeholder=f"Enter {col}...")
+            inputs[col] = render_field_input(col, "", options_map, "add_sched")
 
         if st.form_submit_button("Save Scheduled Task", type="primary"):
             row_values = [format_cell_value(inputs[col]) for col in headers]
@@ -112,19 +138,12 @@ def add_schedule_dialog(headers, schedule_sheet):
 
 
 @st.dialog("✏️ Edit Scheduled Task")
-def edit_schedule_dialog(headers, row_data, sheet_row_num, schedule_sheet):
+def edit_schedule_dialog(headers, options_map, row_data, sheet_row_num, schedule_sheet):
     with st.form(f"edit_scheduled_task_form_{sheet_row_num}"):
         inputs = {}
         for col in headers:
             current_val = format_cell_value(row_data.get(col, ""))
-            if "date" in col.lower():
-                try:
-                    parsed_date = pd.to_datetime(current_val).date() if current_val else datetime.date.today()
-                except Exception:
-                    parsed_date = datetime.date.today()
-                inputs[col] = st.date_input(col, value=parsed_date)
-            else:
-                inputs[col] = st.text_input(col, value=current_val)
+            inputs[col] = render_field_input(col, current_val, options_map, f"edit_sched_{sheet_row_num}")
 
         if st.form_submit_button("Update Task", type="primary"):
             updated_values = [format_cell_value(inputs[col]) for col in headers]
@@ -135,22 +154,22 @@ def edit_schedule_dialog(headers, row_data, sheet_row_num, schedule_sheet):
 
 
 try:
+    _, fields_config = load_all_data()
     schedule_records = load_schedule_data()
     data_sheet, schedule_sheet = get_data_and_schedule_sheets()
 except Exception as e:
-    st.error(f"Could not connect to 'Schedule' tab: {e}")
+    st.error(f"Could not connect to Google Sheets: {e}")
+    fields_config = []
     schedule_records = []
     data_sheet = None
     schedule_sheet = None
 
-# Resolve headers from Schedule tab (fallback to Data tab if Schedule row 1 is empty)
-sheet_headers = []
-if schedule_sheet is not None:
-    sheet_headers = schedule_sheet.row_values(1)
-if not sheet_headers and data_sheet is not None:
-    sheet_headers = data_sheet.row_values(1)
-if not sheet_headers and schedule_records:
-    sheet_headers = list(schedule_records[0].keys())
+# Use only the columns present in the Schedule tab
+schedule_headers = [c.strip() for c in schedule_sheet.row_values(1) if c.strip()] if schedule_sheet is not None else []
+if not schedule_headers and schedule_records:
+    schedule_headers = [str(k).strip() for k in schedule_records[0].keys() if str(k).strip()]
+
+schema_options_map = get_schema_options_map(fields_config)
 
 title_col, add_col = st.columns([6, 1])
 with title_col:
@@ -158,18 +177,17 @@ with title_col:
 with add_col:
     st.write("")
     if st.button("➕ Add", key="open_add_schedule_popup", type="primary", use_container_width=True):
-        if sheet_headers and schedule_sheet is not None:
-            add_schedule_dialog(sheet_headers, schedule_sheet)
+        if schedule_headers and schedule_sheet is not None:
+            add_schedule_dialog(schedule_headers, schema_options_map, schedule_sheet)
         else:
-            st.warning("Please make sure your 'Schedule' tab has column headers in row 1.")
+            st.warning("Please add column headers in row 1 of the 'Schedule' tab.")
 
-st.markdown("Use **Done** to move completed tasks into the **Data** tab, **Edit** to update a task, or **Delete** to remove it.")
+st.markdown("Showing only the columns listed in the **Schedule** tab, using **Schema** dropdown options where applicable.")
 
 if schedule_records:
     df = pd.DataFrame(schedule_records)
-    display_headers = sheet_headers if sheet_headers else list(df.columns)
+    display_headers = schedule_headers if schedule_headers else list(df.columns)
 
-    # Action columns (Done, Edit, Delete) at the start of each row
     col_widths = [0.9, 0.8, 0.9] + [2] * len(display_headers)
     header_cols = st.columns(col_widths)
     header_cols[0].markdown("**Done**")
@@ -185,7 +203,6 @@ if schedule_records:
         sheet_row_num = int(idx) + 2  # Row 1 is headers in Google Sheets
         row_dict = row.to_dict()
 
-        # 1. DONE BUTTON -> Aligns to Data sheet headers, marks missing status as 'incomplete', moves to Data
         with row_cols[0]:
             if st.button("✅ Done", key=f"done_btn_{idx}", type="primary"):
                 with st.spinner("Moving to Data..."):
@@ -201,13 +218,11 @@ if schedule_records:
                         st.success("Moved to Data tab!")
                         st.rerun()
 
-        # 2. EDIT BUTTON -> Opens modal to edit row in Schedule tab
         with row_cols[1]:
             if st.button("✏️ Edit", key=f"edit_btn_{idx}"):
                 _, sched_ws = get_data_and_schedule_sheets()
-                edit_schedule_dialog(display_headers, row_dict, sheet_row_num, sched_ws)
+                edit_schedule_dialog(display_headers, schema_options_map, row_dict, sheet_row_num, sched_ws)
 
-        # 3. DELETE BUTTON -> Deletes row from Schedule tab
         with row_cols[2]:
             if st.button("🗑️ Del", key=f"del_btn_{idx}"):
                 with st.spinner("Deleting..."):
@@ -217,7 +232,6 @@ if schedule_records:
                     st.success("Deleted scheduled task.")
                     st.rerun()
 
-        # Row Data Columns
         for i, col_name in enumerate(display_headers):
             row_cols[i + 3].write(row.get(col_name, ""))
 
